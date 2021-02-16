@@ -1,0 +1,19 @@
+{
+  "janelaMinutos" : 15,
+  "ignoraNamespaces": ["cattle-logging","cattle-prometheus","cattle-system"],
+  "expressoes":[ {
+    "texto": "erro",
+    "excecoes": [
+        "transport: loopyWriter.run returning. connection error: desc = \"transport is closing\"",
+        "terminated rpc error: code = Canceled desc = context canceled"
+    ]
+    },
+    {
+      "texto": "warning",
+      "excecoes": []
+    },
+    {
+      "texto": "warn",
+      "excecoes": []
+    }]
+}
