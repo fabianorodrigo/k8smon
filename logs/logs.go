@@ -24,7 +24,7 @@ func init() {
 }
 
 //PickLogs Retorna uma instância do ContainerLog apenas com os logs que contenham as expressões procuradas
-func PickLogs(containerLog models.ContainerLog) models.ContainerLog {
+func PickLogs(containerLog models.ContainerLog, canalLogs chan models.ContainerLog) {
 	logs := []models.Log{}
 
 	for _, l := range containerLog.Logs {
@@ -34,7 +34,7 @@ func PickLogs(containerLog models.ContainerLog) models.ContainerLog {
 		}
 	}
 	containerLog.Logs = logs
-	return containerLog
+	canalLogs <- containerLog
 }
 
 //PrintLog imprime o log no console/stdout
@@ -42,6 +42,6 @@ func PrintLog(containerLog models.ContainerLog) {
 	if len(containerLog.Logs) == 0 {
 		colors.Grayf("%s.%s.%s\n", containerLog.Namespace, containerLog.PodName, containerLog.ContainerName)
 	} else {
-		colors.Yellowf("%s.%s.%s\n", containerLog.Namespace, containerLog.PodName, containerLog.ContainerName)
+		colors.Yellowf("%s.%s.%s [%s]\n", containerLog.Namespace, containerLog.PodName, containerLog.ContainerName, containerLog.PodNode)
 	}
 }

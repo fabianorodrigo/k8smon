@@ -63,7 +63,9 @@ func ConectarK8s() *kubernetes.Clientset {
 }
 
 //Logs Busca os logs no cluster ao qual o {clientset} está conectado
-func Logs(clientset *kubernetes.Clientset, configuracoes config.Dictionary) []models.ContainerLog {
+func Logs(clientset *kubernetes.Clientset, configuracoes config.Dictionary,
+	funcaoPick func(models.ContainerLog, chan models.ContainerLog),
+	canalLogs chan models.ContainerLog, namespaces ...string) []models.ContainerLog {
 	retorno := []models.ContainerLog{}
 	clienteCoreV1 := clientset.CoreV1()
 	namespaceInterface := clienteCoreV1.Namespaces()
@@ -86,7 +88,7 @@ func Logs(clientset *kubernetes.Clientset, configuracoes config.Dictionary) []mo
 		}*/
 		podList, err := podInterface.List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
-			log.Panicf("Falha ao buscar PODs do namespace %s", namespace)
+			log.Panicf("Falha ao buscar PODs do namespace %s", namespace.Name)
 		}
 		// List() returns a pointer to slice, derefernce it, before iterating
 		for _, podInfo := range (*podList).Items {
@@ -134,11 +136,13 @@ func Logs(clientset *kubernetes.Clientset, configuracoes config.Dictionary) []mo
 						}
 					}
 				}
+				funcaoPick(containerLog, canalLogs)
 				retorno = append(retorno, containerLog)
 			}
 
 		}
 	}
+	close(canalLogs)
 	return retorno
 }
 
@@ -146,9 +150,9 @@ func Logs(clientset *kubernetes.Clientset, configuracoes config.Dictionary) []mo
 func getContainerNames(pod v1.Pod) []string {
 	names := []string{}
 	//Init containers
-	/*for _, c := range pod.Spec.InitContainers {
+	for _, c := range pod.Spec.InitContainers {
 		names = append(names, c.Name)
-	}*/
+	}
 	//containers
 	for _, c := range pod.Spec.Containers {
 		names = append(names, c.Name)
