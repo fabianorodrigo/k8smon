@@ -5,7 +5,6 @@ import (
 
 	"github.com/k8smon/config"
 	"github.com/k8smon/kubernetes"
-	"github.com/k8smon/logs"
 	"github.com/k8smon/models"
 	"github.com/k8smon/ui"
 )
@@ -25,9 +24,13 @@ func main() {
 	clientSet := kubernetes.ConectarK8s()
 	//criando um channel para receber os container logs
 	canalLogs := make(chan models.ContainerLog)
-	go kubernetes.Logs(clientSet, configuracoes, logs.PickLogs, canalLogs)
+	//criando um channel para receber os pods
+	canalPods := make(chan models.Pod)
+
+	go kubernetes.Pods(clientSet, configuracoes, canalPods)
+	//go kubernetes.Logs(clientSet, configuracoes, logs.PickLogs, canalLogs)
 	fmt.Printf("passou do goroutine")
-	ui.Inicializa(canalLogs)
+	ui.Inicializa(canalPods, canalLogs)
 
 	/*for _, cl := range containerLogs {
 		clResultado := logs.PickLogs(cl)

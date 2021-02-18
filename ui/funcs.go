@@ -18,20 +18,28 @@ func cursorDown(g *gocui.Gui, v *gocui.View) error {
 	if v != nil && lineBelow(g, v) == true {
 		v.MoveCursor(0, 1, false)
 		_, cy := v.Cursor()
+		//debuga(g, fmt.Sprintf("DOWN: %d", cy))
 		n, _ := v.Line(cy)
 		if v.Name() == nodesTitulo {
 			nv, _ := g.View(podsTitulo)
 			if n != "" {
 				noSelecionado = *models.GetNodeByName(nos, n) // models.GetProject(n)
 			}
-			// log.Println("cursorDown project.id:", models.CurrentProject.ID)
+			//debuga(g, fmt.Sprintf("cursorDown node: %s", noSelecionado.Nome))
 			redrawPods(g, nv)
 		} else if v.Name() == podsTitulo {
-			nv, _ := g.View(logsTitulo)
+			nv, _ := g.View(containersTitulo)
 			if n != "" {
 				podSelecionado = *models.GetPodByName(pods, n)
 			}
-			// log.Println("cursorUp entry.id:", models.CurrentEntry.ID)
+			//debuga(g, fmt.Sprintf("cursorDown POD: %s", podSelecionado.Nome))
+			redrawContainerss(g, nv)
+		} else if v.Name() == containersTitulo {
+			nv, _ := g.View(logsTitulo)
+			if n != "" {
+				containerSelecionado = n
+			}
+			//debuga(g, fmt.Sprintf("cursorDown POD: %s", podSelecionado.Nome))
 			redrawLogs(g, nv)
 		}
 	}
@@ -42,6 +50,7 @@ func cursorUp(g *gocui.Gui, v *gocui.View) error {
 	if v != nil {
 		v.MoveCursor(0, -1, false)
 		_, cy := v.Cursor()
+		//debuga(g, fmt.Sprintf("UP: %d", cy))
 		n, _ := v.Line(cy)
 		if v.Name() == nodesTitulo {
 			nv, _ := g.View(podsTitulo)
@@ -50,16 +59,21 @@ func cursorUp(g *gocui.Gui, v *gocui.View) error {
 			} else {
 				noSelecionado = models.Node{}
 			}
-			// log.Println("cursorUp project.id:", models.CurrentProject.ID)
+			//debuga(g, fmt.Sprintf("cursorUp node: %s", noSelecionado.Nome))
 			redrawPods(g, nv)
 		} else if v.Name() == podsTitulo {
-			nv, _ := g.View(logsTitulo)
+			nv, _ := g.View(containersTitulo)
 			if n != "" {
 				podSelecionado = *models.GetPodByName(pods, n)
-			} else {
-				podSelecionado = models.Pod{}
 			}
-			// log.Println("cursorUp entry.id:", models.CurrentEntry.ID)
+			//debuga(g, fmt.Sprintf("cursorDown POD: %s", podSelecionado.Nome))
+			redrawContainerss(g, nv)
+		} else if v.Name() == containersTitulo {
+			nv, _ := g.View(logsTitulo)
+			if n != "" {
+				containerSelecionado = n
+			}
+			//debuga(g, fmt.Sprintf("cursorDown POD: %s", podSelecionado.Nome))
 			redrawLogs(g, nv)
 		}
 	}
@@ -177,7 +191,7 @@ func selectItem(g *gocui.Gui, cv *gocui.View) error {
 			nv.SetCursor(0, 0)
 			cursorUp(g, nv)
 		case podsTitulo:
-			if nv, err = g.SetCurrentView(logsTitulo); err != nil {
+			if nv, err = g.SetCurrentView(containersTitulo); err != nil {
 				return err
 			}
 			// log.Println("selectItem task view CurrentEntry:", models.CurrentEntry.ID)
@@ -239,9 +253,16 @@ func goBack(g *gocui.Gui, cv *gocui.View) error {
 		if nv, err = g.SetCurrentView(nodesTitulo); err != nil {
 			return err
 		}
+		containersView, _ := g.View(containersTitulo)
+		redrawContainerss(g, containersView)
+	case containersTitulo:
+		if nv, err = g.SetCurrentView(podsTitulo); err != nil {
+			return err
+		}
 		logsView, _ := g.View(logsTitulo)
 		redrawLogs(g, logsView)
 	}
+
 	// Turn off highlight of current view and make sure it's on for the new view.
 	cv.Highlight = false
 	// Probably redundant.
@@ -262,7 +283,7 @@ func redrawNos(g *gocui.Gui, v *gocui.View) {
 		// We can simply Fprint to a view.
 		_, err := fmt.Fprintln(v, i.Nome)
 		if err != nil {
-			log.Println("Error writing to the projects view:", err)
+			log.Println("Error writing to the nodes view:", err)
 		}
 	}
 	// While the text may shift lines on insert the cursor does not,
@@ -286,17 +307,48 @@ func redrawPods(g *gocui.Gui, v *gocui.View) {
 	// Clear the view of content and redraw it with a fresh database query.
 	v.Clear()
 	// Loop through tasks to add their names to the view.
-	for _, i := range pods {
+	for _, pod := range pods {
 		// We can simply Fprint to a view.
-		_, err := fmt.Fprintln(v, i)
-		if err != nil {
-			log.Println("Erro no desenho da view de PODs:", err)
+		if pod.NomeNode == noSelecionado.Nome {
+			_, err := fmt.Fprintln(v, pod.Nome)
+
+			if err != nil {
+				log.Println("Erro no desenho da view de PODs:", err)
+			}
 		}
 	}
 	if len(pods) != 0 {
 		_, cy := v.Cursor()
 		l, _ := v.Line(cy)
-		podSelecionado = *models.GetPodByName(pods, l)
+		p := models.GetPodByName(pods, l)
+		if p != nil {
+			podSelecionado = *p
+		}
+	}
+	containerView, _ := g.View(containersTitulo)
+	containerSelecionado = ""
+	redrawContainerss(g, containerView)
+	containerView.Highlight = false
+}
+
+// Get the view and redraw it with current database info.
+func redrawContainerss(g *gocui.Gui, v *gocui.View) {
+	// Clear the view of content and redraw it with a fresh database query.
+	v.Clear()
+	// Loop through tasks to add their names to the view.
+	for _, container := range podSelecionado.NomeConteineres {
+		// We can simply Fprint to a view.
+		_, err := fmt.Fprintln(v, container)
+		if err != nil {
+			log.Println("Erro no desenho da view de containers:", err)
+		}
+	}
+	if len(podSelecionado.NomeConteineres) != 0 {
+		_, cy := v.Cursor()
+		l, _ := v.Line(cy)
+		if l != "" {
+			containerSelecionado = l
+		}
 	}
 	logView, _ := g.View(logsTitulo)
 	redrawLogs(g, logView)
@@ -320,7 +372,7 @@ func redrawLogs(g *gocui.Gui, v *gocui.View) {
 		}
 		if cv.Name() == podsTitulo {
 			if _, err := fmt.Fprintf(v, "%d Containeres\n\n",
-				podSelecionado.QtContainers); err != nil {
+				len(podSelecionado.NomeConteineres)); err != nil {
 				log.Println("Erro na renderização dos logs do pod:", err)
 			}
 		}
@@ -333,19 +385,24 @@ func layout(g *gocui.Gui) error {
 	tw, th := g.Size()
 	// Update the views according to the new terminal size.
 	// Nós.
-	_, err := g.SetView(nodesTitulo, 0, 0, nodesRight, th-1)
+	_, err := g.SetView(nodesTitulo, 0, 0, nodesRight, th-alturaLog-margemInferior)
 	if err != nil {
-		return errors.Wrap(err, "Cannot update projects view")
+		return errors.Wrap(err, "Cannot update nodes view")
 	}
 	// Pods
-	_, err = g.SetView(podsTitulo, nodesRight+1, 0, podsRight, th-1)
+	_, err = g.SetView(podsTitulo, nodesRight+1, 0, podsRight, th-alturaLog-margemInferior)
 	if err != nil {
-		return errors.Wrap(err, "Cannot update tasks view")
+		return errors.Wrap(err, "Cannot update pods view")
+	}
+	// Containers
+	_, err = g.SetView(containersTitulo, podsRight+1, 0, tw-1, th-alturaLog-margemInferior)
+	if err != nil {
+		return errors.Wrap(err, "Cannot update pods view")
 	}
 	// Output
-	_, err = g.SetView("output", podsRight+1, 0, tw-1, th-1)
+	_, err = g.SetView(logsTitulo, 0, th-alturaLog-margemInferior+1, tw-1, th-margemInferior)
 	if err != nil {
-		return errors.Wrap(err, "Cannot update output view")
+		return errors.Wrap(err, "Cannot update logs view")
 	}
 	// Status
 	// Not used right now. If uncommented set all above SetView() y1 values to 'th-4'.
@@ -360,3 +417,25 @@ func layout(g *gocui.Gui) error {
 func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
+
+// Get the view and redraw it with current database info.
+// It's important to note that this function will call
+// redrawTasks, which will call
+// redrawEntries, which will call
+// redrawOutput. Make it fucking rain.
+/*func debuga(g *gocui.Gui, s string) {
+	v, _ := g.View("debug")
+	// Clear the view of content and redraw it with a fresh database query.
+	//v.Clear()
+	_, err := fmt.Fprintln(v, s)
+	if err != nil {
+		log.Println("Erro no debug:", err)
+	}
+}
+
+func limpaDebug(g *gocui.Gui, v *gocui.View) error {
+	vd, _ := g.View("debug")
+	// Clear the view of content and redraw it with a fresh database query.
+	vd.Clear()
+	return nil
+}*/

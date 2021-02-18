@@ -62,6 +62,37 @@ func ConectarK8s() *kubernetes.Clientset {
 	return clientset
 }
 
+//Pods Busca os pods no cluster ao qual o {clientset} está conectado
+func Pods(clientset *kubernetes.Clientset, configuracoes config.Dictionary,
+	canalPods chan models.Pod, namespaces ...string) {
+	clienteCoreV1 := clientset.CoreV1()
+	namespaceInterface := clienteCoreV1.Namespaces()
+	namespaceList, err := namespaceInterface.List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Panicf("Falha ao buscar namespaces ")
+	}
+
+	//Percorre os namespaces
+	for _, namespace := range (*namespaceList).Items {
+		//Se o namespace estiver configurado para não ser analisado, salta para o próximo
+		if utils.ArrayContains(configuracoes["ignoraNamespaces"].([]interface{}), namespace.Name) {
+			continue
+		}
+		podInterface := clienteCoreV1.Pods(namespace.Name)
+
+		podList, err := podInterface.List(context.TODO(), metav1.ListOptions{})
+		if err != nil {
+			log.Panicf("Falha ao buscar PODs do namespace %s", namespace.Name)
+		}
+		// List() returns a pointer to slice, derefernce it, before iterating
+		for _, podInfo := range (*podList).Items {
+			canalPods <- models.Pod{Nome: podInfo.Name, IP: podInfo.Status.PodIP, Namespace: namespace.Name,
+				Fase: string(podInfo.Status.Phase), NomeNode: podInfo.Spec.NodeName, IPNode: podInfo.Status.HostIP, NomeConteineres: getContainerNames(podInfo)}
+		}
+	}
+	close(canalPods)
+}
+
 //Logs Busca os logs no cluster ao qual o {clientset} está conectado
 func Logs(clientset *kubernetes.Clientset, configuracoes config.Dictionary,
 	funcaoPick func(models.ContainerLog, chan models.ContainerLog),

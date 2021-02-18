@@ -1,8 +1,13 @@
 package models
 
 type Pod struct {
-	Nome         string
-	QtContainers int
+	Nome            string
+	IP              string
+	Fase            string
+	Namespace       string
+	NomeNode        string
+	IPNode          string
+	NomeConteineres []string
 }
 
 //PodIsIn retorna TRUE se algum elemento de {arr} tem a
