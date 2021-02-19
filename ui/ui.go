@@ -149,10 +149,8 @@ func Inicializa(canalPods chan models.Pod, canalLogs chan models.ContainerLog) {
 	// (workaround)
 	cursorUp(g, v)
 
-	if err := g.MainLoop(); err != nil {
-		g.Close()
-		panic(err.Error())
-		//os.Exit(1)
+	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
+		log.Panicln(err)
 	}
 	log.Println("Main loop finalizado:", err)
 }
