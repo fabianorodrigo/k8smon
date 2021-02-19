@@ -1,6 +1,6 @@
 {
   "janelaMinutos" : 15,
-  "ignoraNamespaces": ["cattle-logging","cattle-prometheus","cattle-system","kube-system","default","istio-system"],
+  "ignoraNamespaces": ["cattle-logging","cattle-prometheus","cattle-system"],
   "expressoes":[ {
     "texto": "erro",
     "excecoes": [
