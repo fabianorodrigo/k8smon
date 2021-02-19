@@ -64,7 +64,7 @@ func ConectarK8s() *kubernetes.Clientset {
 
 //Pods Busca os pods no cluster ao qual o {clientset} está conectado
 func Pods(clientset *kubernetes.Clientset, configuracoes config.Dictionary,
-	canalPods chan models.Pod, namespaces ...string) {
+	canalPods chan<- models.Pod, namespaces ...string) {
 	clienteCoreV1 := clientset.CoreV1()
 	namespaceInterface := clienteCoreV1.Namespaces()
 	namespaceList, err := namespaceInterface.List(context.TODO(), metav1.ListOptions{})
